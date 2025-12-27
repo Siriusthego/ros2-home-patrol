@@ -23,7 +23,6 @@
         </visual>
     </link>
 
-
     <joint name="camera_optical_joint" type="fixed">
         <parent link="camera_link"/>
         <child link="camera_link_optical"/>
@@ -32,13 +31,12 @@
 
     <link name="camera_link_optical"></link>
 
-
-
     <gazebo reference="camera_link">
         <material>Gazebo/Blue</material>
 
+        <!-- Gazebo Classic Camera Sensor -->
         <sensor name="camera" type="camera">
-            <pose> 0 0 0 0 0 0 </pose>
+            <pose>0 0 0 0 0 0</pose>
             <visualize>true</visualize>
             <update_rate>10</update_rate>
             <camera>

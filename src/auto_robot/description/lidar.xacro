@@ -31,26 +31,25 @@
         </xacro:inertial_cylinder>
     </link>
 
-
-
     <gazebo reference="laser_frame">
         <material>Gazebo/Blue</material>
 
+        <!-- Gazebo Classic Lidar Sensor -->
         <sensor name="laser" type="ray">
-            <pose> 0 0 0 0 0 0 </pose>
+            <pose>0 0 0 0 0 0</pose>
             <visualize>false</visualize>
             <update_rate>10</update_rate>
             <ray>
                 <scan>
                     <horizontal>
                         <samples>360</samples>
-                        <min_angle>-3.14</min_angle>
-                        <max_angle>3.14</max_angle>
+                        <min_angle>-3.14159</min_angle>
+                        <max_angle>3.14159</max_angle>
                     </horizontal>
                 </scan>
                 <range>
                     <min>0.3</min>
-                    <max>12</max>
+                    <max>12.0</max>
                 </range>
             </ray>
             <plugin name="laser_controller" filename="libgazebo_ros_ray_sensor.so">
