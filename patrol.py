@@ -65,6 +65,8 @@ def main():
         ("Mutfak (Kitchen)", -4.5, -3.0, 0.0),
         ("Yatak Odasi 1 (Bedroom 1)", 4.5, 2.0, 0.0),
         ("Yatak Odasi 2 (Bedroom 2)", 4.5, -3.0, 0.0),
+        # TODO: Update Tuvalet coordinates with actual map values
+        ("Tuvalet (Bathroom)", 0.0, 0.0, 0.0),  # Placeholder coordinates
         ("Koridor (Hallway - Home)", -2.0, 0.0, 0.0),
     ]
     
