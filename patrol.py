@@ -1,32 +1,18 @@
 #!/usr/bin/env python3
 """
-Autonomous Apartment Patrol Script - SIMULATION TIME ENFORCED
-Uses Nav2 Simple Commander API with strict sim time synchronization
+Autonomous Patrol Script for 2+1 Apartment
+Uses Nav2 Simple Commander API to visit all rooms sequentially
 """
 
 import rclpy
-from rclpy.parameter import Parameter
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 from geometry_msgs.msg import PoseStamped
 import time
 
-def create_pose_stamped(navigator, x, y, yaw=0.0):
-    """
-    Create a PoseStamped message for navigation goal with SIMULATION TIME
-    
-    Args:
-        navigator: BasicNavigator instance (must use sim time)
-        x: X coordinate in map frame
-        y: Y coordinate in map frame
-        yaw: Orientation in radians (default 0.0)
-    
-    Returns:
-        PoseStamped message with simulation timestamp
-    """
+def create_pose(navigator, x, y, yaw=0.0):
+    """Create a PoseStamped message for navigation"""
     pose = PoseStamped()
     pose.header.frame_id = 'map'
-    
-    # CRITICAL: Use navigator's clock (simulation time)
     pose.header.stamp = navigator.get_clock().now().to_msg()
     
     pose.pose.position.x = x
@@ -41,132 +27,98 @@ def create_pose_stamped(navigator, x, y, yaw=0.0):
     return pose
 
 def main():
-    # Initialize ROS 2 with SIMULATION TIME parameter
     rclpy.init()
     
-    # Create the navigator with EXPLICIT sim time setting
-    print("🕐 Initializing BasicNavigator with use_sim_time=True...")
+    # Initialize the navigator
     navigator = BasicNavigator()
     
-    # CRITICAL: Verify simulation time parameter (already declared by BasicNavigator)
-    use_sim_time = navigator.get_parameter('use_sim_time').value
-    print(f"✓ use_sim_time parameter: {use_sim_time}")
-    
-    if not use_sim_time:
-        print("❌ ERROR: use_sim_time is False! This will cause timestamp issues.")
-        print("   Make sure to run: export ROS_DOMAIN_ID=0")
-        print("   And start with: ros2 run ... --ros-args -p use_sim_time:=true")
-        return
-    
-    # Define waypoints for the 2+1 apartment
-    # Format: (room_name, x, y, yaw)
+    # Define waypoints for apartment patrol
+    # User-specified coordinates for each room
+    # Format: (name, x, y, yaw)
     waypoints = [
-        ("Salon (Living Room)", -4.5, 2.0, 0.0),
-        ("Mutfak (Kitchen)", -4.5, -3.0, 0.0),
-        ("Yatak Odasi 1 (Bedroom 1)", 4.5, 2.0, 0.0),
-        ("Yatak Odasi 2 (Bedroom 2)", 4.5, -3.0, 0.0),
-        # TODO: Update Tuvalet coordinates with actual map values
-        ("Tuvalet (Bathroom)", 0.0, 0.0, 0.0),  # Placeholder coordinates
-        ("Koridor (Hallway - Home)", -2.0, 0.0, 0.0),
+        ("Salon (Living Room)", -4.5, 2.0, 1.0),
+        ("Mutfak (Kitchen)", -4.5, -3.0, 1.0),
+        ("Yatak Odası 1 (Bedroom Top)", 4.5, 2.0, 1.0),
+        ("Yatak Odası 2 (Bedroom Bottom)", 4.5, -3.0, 1.0),
+        ("Koridor (Return Home)", -2.0, 0.0, 1.0),
     ]
     
-    print("\n" + "="*70)
-    print("🏠 AUTONOMOUS APARTMENT PATROL")
-    print("="*70)
-    print(f"📍 Waypoints: {len(waypoints)} locations")
-    print("🤖 Robot will visit each room sequentially")
-    print("="*70 + "\n")
+    print("\n" + "="*60)
+    print("🏠 APARTMENT PATROL STARTED")
+    print("="*60)
+    print(f"📍 Total waypoints: {len(waypoints)}")
+    print("🤖 Robot will visit all rooms sequentially")
+    print("="*60 + "\n")
     
     # Wait for Nav2 to be ready
-    print("⏳ Waiting for Nav2 to become active...")
+    print("⏳ Waiting for Nav2 to be fully active...")
     navigator.waitUntilNav2Active()
     print("✅ Nav2 is ready!\n")
     
-    # Set initial pose using simulation time
-    initial_pose = create_pose_stamped(navigator, -2.0, 0.0, 0.0)
-    print(f"🕐 Initial pose timestamp: {initial_pose.header.stamp.sec}.{initial_pose.header.stamp.nanosec}")
+    # Set initial pose (robot starts at -2.0, 0.0)
+    initial_pose = create_pose(navigator, -2.0, 0.0, 0.0)
     navigator.setInitialPose(initial_pose)
-    print("📍 Initial pose set: Koridor (x=-2.0, y=0.0)\n")
+    print("📍 Initial pose set: Hallway (x=-2.0, y=0.0)\n")
     
-    # Wait for localization
-    time.sleep(2)
+    time.sleep(2)  # Give AMCL time to localize
     
+    # Patrol loop
+    patrol_count = 1
     try:
-        patrol_cycle = 1
-        
-        while True:  # Infinite patrol loop
-            print(f"\n{'=' * 70}")
-            print(f"🔄 PATROL CYCLE #{patrol_cycle}")
-            print(f"{'=' * 70}\n")
+        while True:
+            print(f"\n{'🔄 PATROL CYCLE #' + str(patrol_count):=^60}\n")
             
-            for i, (room_name, x, y, yaw) in enumerate(waypoints, 1):
-                print(f"[{i}/{len(waypoints)}] 🎯 Going to: {room_name}")
-                print(f"             Coordinates: (x={x}, y={y}, yaw={yaw})")
+            for i, (name, x, y, yaw) in enumerate(waypoints, 1):
+                print(f"[{i}/{len(waypoints)}] 🎯 Going to: {name}")
+                print(f"           Coordinates: (x={x}, y={y})")
                 
-                # Create the goal pose with SIMULATION TIME
-                goal_pose = create_pose_stamped(navigator, x, y, yaw)
+                # Create goal pose
+                goal_pose = create_pose(navigator, x, y, yaw)
                 
-                # Debug: Print timestamp
-                print(f"             🕐 Goal timestamp: {goal_pose.header.stamp.sec}.{goal_pose.header.stamp.nanosec}")
-                
-                # Send the goal to Nav2
+                # Send goal
                 navigator.goToPose(goal_pose)
                 
-                # Monitor progress
+                # Wait for navigation to complete
                 while not navigator.isTaskComplete():
                     feedback = navigator.getFeedback()
                     if feedback:
-                        distance_remaining = feedback.distance_remaining
-                        if distance_remaining > 0.1:
-                            print(f"             Distance remaining: {distance_remaining:.2f}m", end='\r')
+                        distance = feedback.distance_remaining
+                        if distance > 0.1:  # Only print if meaningful distance
+                            print(f"           Distance remaining: {distance:.2f}m", end='\r')
                     time.sleep(0.5)
                 
-                # Check the result
+                # Check result
                 result = navigator.getResult()
-                
-                # DEBUG: Print detailed result
-                print(f"\n             🔍 Navigation result: {result}")
-                
                 if result == TaskResult.SUCCEEDED:
-                    print(f"             ✅ Arrived at {room_name}!")
+                    print(f"\n           ✅ Arrived at {name}!")
                 elif result == TaskResult.CANCELED:
-                    print(f"             ⚠️  Navigation to {room_name} was CANCELED")
-                    print(f"             Reason: User canceled or preempted the goal")
+                    print(f"\n           ⚠️  Navigation to {name} was canceled")
                 elif result == TaskResult.FAILED:
-                    print(f"             ❌ FAILED to reach {room_name}")
-                    print(f"             Reason: Controller could not find a valid path or execution failed")
-                elif result == TaskResult.UNKNOWN:
-                    print(f"             ❓ UNKNOWN result for {room_name}")
-                    print(f"             Reason: Goal may have been rejected or server error")
-                else:
-                    print(f"             ⚠️  Unexpected result: {result}")
+                    print(f"\n           ❌ Failed to reach {name}")
                 
-                # Wait 2 seconds at the location
-                print(f"             ⏸️  Waiting 2 seconds at {room_name}...")
+                # Brief pause at each waypoint
                 time.sleep(2)
             
-            print(f"\n{'=' * 70}")
-            print(f"✅ PATROL CYCLE #{patrol_cycle} COMPLETED")
-            print(f"{'=' * 70}")
-            print("\n🔄 Starting next cycle in 3 seconds...")
-            print("   (Press Ctrl+C to stop)\n")
-            time.sleep(3)
+            print(f"\n{'✅ PATROL CYCLE #' + str(patrol_count) + ' COMPLETED':=^60}\n")
+            patrol_count += 1
             
-            patrol_cycle += 1
-    
+            # Ask if user wants to continue (comment out for infinite loop)
+            print("🔄 Starting next patrol cycle in 5 seconds...")
+            print("   (Press Ctrl+C to stop)\n")
+            time.sleep(5)
+            
     except KeyboardInterrupt:
-        print("\n\n🛑 Patrol stopped by user")
+        print("\n\n🛑 Patrol interrupted by user")
         navigator.cancelTask()
     
     finally:
-        print("\n" + "="*70)
+        print("\n" + "="*60)
         print(f"📊 PATROL SUMMARY")
-        print("="*70)
-        print(f"Total cycles completed: {patrol_cycle - 1}")
-        print(f"Total waypoints visited: {(patrol_cycle - 1) * len(waypoints)}")
-        print("="*70 + "\n")
+        print("="*60)
+        print(f"Total cycles completed: {patrol_count - 1}")
+        print(f"Total waypoints visited: {(patrol_count - 1) * len(waypoints)}")
+        print("="*60 + "\n")
         
-        # Cleanup
         navigator.lifecycleShutdown()
         rclpy.shutdown()
 
